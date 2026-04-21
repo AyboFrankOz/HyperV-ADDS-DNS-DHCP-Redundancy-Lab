@@ -51,7 +51,6 @@ This scenario often requires implementing split-brain DNS, where separate DNS vi
 To avoid these issues, a common best practice is to use a separate internal namespace. In this lab, I followed this approach by prefixing the domain with an internal identifier. Instead of using homelab.local for both internal and external purposes, I configured the internal domain as int.homelab.local. This allows clear separation between internal and external DNS, improves security, and simplifies overall network design.
 
 ## Domain Name System (DNS) - DC01
-
 When installing Active Directory Domain Services (AD DS), the DNS Server role is installed and configured automatically. DNS plays a critical role in Active Directory by enabling clients to locate domain controllers and other services within the domain. Without a properly functioning DNS infrastructure, core Active Directory operations such as authentication, replication, and service discovery would fail. Let’s take a quick look at what Active Directory automatically configures in DNS during deployment: Server Manager Dashboard > Tools > DNS
 ![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(1).PNG)
 
@@ -113,4 +112,114 @@ The Reverse Lookup Zone for DC01 will be updated. A Pointer (PTR) record maps an
 DNS verification has completed.
 
 ## Dynamic Host Configuration Protocol (DHCP) - DC01
+To install DHCP: From Server Manager's menu bar, click on Manage > "Add Roles and Features". Next > Click on "Role-based or feature-based installation" Next > Server Selection should be DC01.int.homelab.local (our fully qualified domain name) Next > For the server role, click on DHCP and add its features.
+![DHCPsetup](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/751af3f237bdefd9bad6df93c641304fe419e40a/images/DHCP%20setup%20(1).PNG)
 
+Complete the wizard by clicking Next through the remaining steps. Once the installation is finished, you will receive a notification prompting you to complete the DHCP Configuration. Click to continue...
+![DHCPsetup](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/751af3f237bdefd9bad6df93c641304fe419e40a/images/DHCP%20setup%20(2).PNG)
+
+This will create security groups for DHCP Server Administration.
+![DHCPsetup](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/751af3f237bdefd9bad6df93c641304fe419e40a/images/DHCP%20setup%20(3).PNG)
+
+It will automatically recognize our Active Directory credentials. Next and finish the configuration.
+![DHCPsetup](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/751af3f237bdefd9bad6df93c641304fe419e40a/images/DHCP%20setup%20(4).PNG)
+
+From Server Manager's menu bar, click on Tools > DHCP to configure.
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(1).PNG)
+
+DHCP > dc01.int.homelab.local > IPv4. Right-click on IPv4 to set a new scope.
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(2).PNG)
+
+This will launch the New Scope Wizard, which is used to define a range of IP addresses that the DHCP server can lease to clients within the network.
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(3).PNG)
+
+Name the scope
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(4).PNG)
+
+A static IP address is used to assign a permanent, unchanging network address to devices that require consistent and reliable connectivity, such as servers, printers, and VoIP systems. That is also why we assigned static IP addresses to all three servers in this lab. It simplifies network administration, supports services that depend on fixed addressing, and can improve security by enabling IP-based allowlisting. It also ensures stable connections for services that benefit from consistent addressing, avoiding potential interruptions caused by dynamically changing IPs. For this reason, DHCP scopes are configured to avoid overlapping with statically assigned IP addresses. This ensures that the DHCP server does not accidentally distribute addresses that are already reserved for critical infrastructure components.
+
+In this case, I configure the DHCP scope to start from 192.168.0.30 and end at 192.168.0.230, providing a total of 200 available IP addresses for dynamic allocation within the network.
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(5).PNG)
+
+Click Next, as we are not configuring any exclusions or delay settings in this scope.
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(6).PNG)
+
+DHCP lease time refers to the duration for which a device is allowed to use a specific IP address assigned by a DHCP server. Once the lease expires, the device loses that IP address, its network connection is refreshed, and it must request a new address from the DHCP server. During the lease period, the IP address remains effectively “reserved” for that device, ensuring stable connectivity.
+
+In environments such as public networks (for example, coffee shops or guest Wi-Fi), it is common to configure shorter lease times—such as 30 minutes to 1 hour—to quickly recycle IP addresses and avoid exhaustion when many transient devices connect. In this lab environment, however, the default lease duration is sufficient, as the number of connected devices will be limited and predictable.
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(7).PNG)
+
+Hit next to configure the additional parameters.
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(8).PNG)
+
+Since we are using a private virtual switch, which is a fully isolated virtual network, we will simulate a default gateway (router) for configuration purposes. In this lab, we will assign the gateway IP address as 192.168.0.1 and click on Add.
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(9).PNG)
+
+Click on next.
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(1).PNG)
+
+The wizard is now prompting for Active Directory integration, and it detects the existing domain int.homelab.local. It is asking whether this DHCP configuration should be authorized and integrated with the parent Active Directory domain. Since this DHCP server is part of the same domain infrastructure, we confirm that it should be integrated with int.homelab.local. This ensures proper authorization within Active Directory and allows the DHCP server to securely operate in the environment. It also correctly identifies that 192.168.0.2 will be used as one of the DNS server options distributed to clients. Click Next to continue.
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(11).PNG)
+
+Click Next, as we are not configuring any WINS Servers, which are used to configure NetBIOS name resolution on client computers.
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(12).PNG)
+
+Next!
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(13).PNG)
+
+Finish!
+![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(14).PNG)
+
+To test the DHCP configuration, I quickly added a Windows 10 Pro virtual machine as a client named PC001. As expected, it does not have a static IP address assigned. When running ipconfig, the client successfully received an IP address of 192.168.0.30, which falls within the DHCP scope configured earlier (192.168.0.30–192.168.0.230). This confirms that the DHCP server is functioning correctly and distributing addresses as intended.
+![DHCPtest](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c9626a3195a4983eeda052fce054c86bb42c044d/images/DHCPtest.PNG)
+
+*You can also observe that both the DNS server and default gateway/DHCP-related configuration are currently pointing to 192.168.0.2. This is expected at this stage of the lab, as only the primary server (DC01) is active. This configuration will be updated later once redundancy is fully implemented with DC02 and DHCP02, ensuring high availability and failover capabilities across the environment.*
+
+**DC02 (Secondary / Backup Domain Controller)**
+At this stage, we have a fully functional Active Directory environment in place. We have a domain controller, DNS server, and DHCP server all working together—handling authentication, name resolution, and IP address allocation across our virtual network. However, in a real-world scenario, relying on a single domain controller creates a single point of failure. If that server goes offline, critical services such as user authentication and DNS resolution would be disrupted.
+
+To address this, we implement redundancy. The next step is to add a second domain controller (DC02) to the environment. This provides fault tolerance by enabling Active Directory replication, ensuring that directory data is synchronized across both servers. If one domain controller fails, the other can continue to handle authentication and directory services without interruption. This approach significantly improves the availability, resilience, and reliability of the overall infrastructure.
+
+Before setting up DC02 as an additional domain controller, ensure the following prerequisites are completed:
+* Rename the server to DC02
+* Assign a static IP address of 192.168.0.3
+* Join the server to the domain (int.homelab.local)
+
+Once these steps are complete, install the Active Directory Domain Services (AD DS) role and select Promote this server to a domain controller. After the installation finishes, launch the Deployment Configuration Wizard to begin configuring DC02 as an additional domain controller.
+![DC02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/2501c2f2cbcaf196e8334927a6b774897eec3632/images/DC02%20(1).PNG)
+
+Since the server is already joined to int.homelab.local, the domain is automatically detected and ready to use; this is why joining the domain beforehand simplifies the process.
+![DC02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/8c8859cd199459ff480a00fd9dd10457818c4fe9/images/DC02%20(2).PNG)
+
+Keep DNS Server selected (DC02 will also act as a DNS server). Keep Global Catalog (GC) enabled so it holds a full copy of directory objects. Leave Read-Only Domain Controller (RODC) unchecked, as we want this to be a fully writable domain controller. Set a password > Next.
+![DC02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/8c8859cd199459ff480a00fd9dd10457818c4fe9/images/DC02%20(3).PNG)
+
+We can ignore this warning about DNS delegation since DNS is being handled internally in this lab.
+![DC02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/8c8859cd199459ff480a00fd9dd10457818c4fe9/images/DC02%20(4).PNG)
+
+Next, choose a replication source. The wizard will automatically detect DC01 as the existing domain controller, and DC02 will replicate all Active Directory data from it. Select DC01 and Next.
+![DC02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/8c8859cd199459ff480a00fd9dd10457818c4fe9/images/DC02%20(5).PNG)
+
+Leave the default database, log, and SYSVOL paths.
+![DC02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/8c8859cd199459ff480a00fd9dd10457818c4fe9/images/DC02%20(6).PNG)
+
+Next.
+![DC02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/8c8859cd199459ff480a00fd9dd10457818c4fe9/images/DC02%20(7).PNG)
+
+After completing the prerequisite check, confirm that all requirements have passed (warnings are acceptable). Then proceed with the installation. Once complete, the server will reboot automatically. After reboot, DC02 will be fully configured as an additional domain controller.
+![DC02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/8c8859cd199459ff480a00fd9dd10457818c4fe9/images/DC02%20(8).PNG)
+
+To verify replication, I created a new Organizational Unit (OU) named testdc02 and added a user called testuser from DC02.
+![DC02test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/35c54da17cfb4d502756be1a0d8cc73d07ea6a36/images/testDC02%20(1).PNG)
+
+![DC02test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/35c54da17cfb4d502756be1a0d8cc73d07ea6a36/images/testDC02%20(2).PNG)
+
+When I checked DC01, the same OU and user were visible there as well. This confirms that Active Directory replication is functioning correctly, and both domain controllers are synchronizing changes. In other words, both DCs are communicating with each other and maintaining a consistent copy of the directory, which is exactly what we want for redundancy and high availability.
+![DC02test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/35c54da17cfb4d502756be1a0d8cc73d07ea6a36/images/testDC02%20(3).PNG)
+
+When checking DNS on DC02, you can see that all the records and zones are already present—even though we didn’t manually configure DNS on this server.
+![DC02testDNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/29dd00d0f3c99b9597bc52fe7ac9c50ed614465f/images/DNStestDC02%20(1).PNG)
+
+![DC02testDNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/29dd00d0f3c99b9597bc52fe7ac9c50ed614465f/images/DNStestDC02%20(2).PNG)
+
+**DHCP02 (Secondary / Backup DHCP Server)**
