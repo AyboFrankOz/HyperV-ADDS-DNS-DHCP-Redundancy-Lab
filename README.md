@@ -52,4 +52,55 @@ To avoid these issues, a common best practice is to use a separate internal name
 
 ## Domain Name System (DNS)
 
-When installing Active Directory Domain Services (AD DS), the DNS Server role is installed and configured automatically. DNS plays a critical role in Active Directory by enabling clients to locate domain controllers and other services within the domain. Without a properly functioning DNS infrastructure, core Active Directory operations such as authentication, replication, and service discovery would fail. Let’s take a quick look at what Active Directory automatically configures in DNS during deployment:
+When installing Active Directory Domain Services (AD DS), the DNS Server role is installed and configured automatically. DNS plays a critical role in Active Directory by enabling clients to locate domain controllers and other services within the domain. Without a properly functioning DNS infrastructure, core Active Directory operations such as authentication, replication, and service discovery would fail. Let’s take a quick look at what Active Directory automatically configures in DNS during deployment: Server Manager Dashboard > Tools > DNS
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(1).PNG)
+
+DNS > DC01 > Forward Lookup Zones. You can see that the DNS Forward Lookup Zone is already created. A forward lookup zone resolves a hostname (for example, PC001) to its corresponding IP address. We can see that DC01 has been properly added to the DNS. If you right-click the zone and open Properties, you can review the Start of Authority (SOA) record. This shows the authoritative name server for the zone and confirms that the DNS configuration is valid and functioning correctly. You’ll also see that the hostname has already been automatically registered, indicating that DNS is properly integrated with Active Directory.
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(2).PNG)
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(3).PNG)
+
+However, you’ll notice that a reverse lookup zone is not created by default. Without it, the DNS server cannot resolve IP addresses back to hostnames (PTR records), which can cause issues with certain services, logging, and troubleshooting.
+To fix this, we can create a reverse lookup zone: Right-click Reverse Lookup Zones → New Zone.
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(4).PNG)
+
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(5).PNG)
+
+Select Primary Zone, and since this is a domain environment, choose to store the zone in Active Directory.
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(6).PNG)
+
+One key difference compared to standalone DNS is the replication scope option. Here, you can choose to replicate the DNS zone to all DNS servers running on domain controllers in the domain. This ensures that when additional domain controllers are added (such as DC02), the DNS data is automatically shared—making the setup more scalable and resilient.
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(7).PNG)
+
+Next, select IPv4 Reverse Lookup Zone
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(8).PNG)
+
+Enter the network ID 192.168.0
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(9).PNG)
+
+Proceed with the wizard and allow secure dynamic updates. This enables domain-joined machines to automatically create and update their DNS records, which is essential for Active Directory environments.
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(10).PNG)
+
+Once the wizard is complete, the reverse lookup zone is created.
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(11).PNG)
+
+Double-click on Start of Authority under Reverse Lookup Zones. A **Start of Authority (SOA)** DNS record is a mandatory resource record that defines the beginning of a DNS zone and contains essential administrative details. These include the primary name server for the zone, the administrator’s contact information, and important timing parameters such as refresh, retry, expire, and default TTL values used for zone replication and caching.   
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(12).PNG)
+
+A **Name Server (NS)** record identifies which servers are authoritative for a domain, acting as a directory that directs traffic to the correct web host. These records are essential for directing queries to the right IP address, typically requiring at least two servers for redundancy to prevent website downtime. The IP Address of the Name Server is unknown; let's verify it. 
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(13).PNG)
+
+Click on Edit to edit the name server record. 
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(14).PNG)
+
+Click on the Resolve button to validate it.
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(15).PNG)
+
+
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(16).PNG)
+
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(17).png)
+
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(18).png)
+
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(19).PNG)
+
