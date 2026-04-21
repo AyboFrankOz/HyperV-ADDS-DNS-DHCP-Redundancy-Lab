@@ -50,12 +50,15 @@ This scenario often requires implementing split-brain DNS, where separate DNS vi
 
 To avoid these issues, a common best practice is to use a separate internal namespace. In this lab, I followed this approach by prefixing the domain with an internal identifier. Instead of using homelab.local for both internal and external purposes, I configured the internal domain as int.homelab.local. This allows clear separation between internal and external DNS, improves security, and simplifies overall network design.
 
-## Domain Name System (DNS)
+## Domain Name System (DNS) - DC01
 
 When installing Active Directory Domain Services (AD DS), the DNS Server role is installed and configured automatically. DNS plays a critical role in Active Directory by enabling clients to locate domain controllers and other services within the domain. Without a properly functioning DNS infrastructure, core Active Directory operations such as authentication, replication, and service discovery would fail. Let’s take a quick look at what Active Directory automatically configures in DNS during deployment: Server Manager Dashboard > Tools > DNS
 ![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(1).PNG)
 
-DNS > DC01 > Forward Lookup Zones. You can see that the DNS Forward Lookup Zone is already created. A forward lookup zone resolves a hostname (for example, PC001) to its corresponding IP address. We can see that DC01 has been properly added to the DNS. If you right-click the zone and open Properties, you can review the Start of Authority (SOA) record. This shows the authoritative name server for the zone and confirms that the DNS configuration is valid and functioning correctly. You’ll also see that the hostname has already been automatically registered, indicating that DNS is properly integrated with Active Directory.
+DNS > DC01 > Forward Lookup Zones. You can see that the DNS Forward Lookup Zone is already created. A forward lookup zone resolves a hostname (for example, dc01) to its corresponding IP address. We can see that DC01 has been properly added to the DNS. This is also called A DNS "A record".
+![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/10936461f6b463523768417fb166ef2b90d1b035/images/DNS%20(2.1).PNG)
+
+If you right-click the zone and open Properties, you can review the Start of Authority (SOA) record. This shows the authoritative name server for the zone and confirms that the DNS configuration is valid and functioning correctly. You’ll also see that the hostname has already been automatically registered, indicating that DNS is properly integrated with Active Directory.
 ![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(2).PNG)
 ![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(3).PNG)
 
@@ -95,12 +98,19 @@ Click on Edit to edit the name server record.
 Click on the Resolve button to validate it.
 ![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(15).PNG)
 
-
+Lastly, to fix a pointer record for DC01 under the Forward Lookup Zone. Right-click on DC01 and Properties.
 ![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(16).PNG)
 
+Check "Update associated pointer (PTR) record and Apply.
 ![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(17).png)
 
+When you click on Refresh.
 ![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(18).png)
 
+The Reverse Lookup Zone for DC01 will be updated. A Pointer (PTR) record maps an IP address to a hostname, enabling "reverse DNS lookup" (IP-to-name). It is the opposite of an 'A' record (name-to-IP).
 ![DNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/9f9f06a27f2fe57fc05bd19ff1076a752877f2d5/images/DNS%20(19).PNG)
+
+DNS verification has completed.
+
+## Dynamic Host Configuration Protocol (DHCP) - DC01
 
