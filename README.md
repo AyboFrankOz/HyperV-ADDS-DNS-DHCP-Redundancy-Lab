@@ -170,7 +170,7 @@ Next!
 Finish!
 ![DHCP](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/deb51181a066bb3a473ae191074428b2362dd162/images/DHCP%20(14).PNG)
 
-To test the DHCP configuration, I quickly added a Windows 10 Pro virtual machine as a client named PC001. As expected, it does not have a static IP address assigned. When running ipconfig, the client successfully received an IP address of 192.168.0.30, which falls within the DHCP scope configured earlier (192.168.0.30–192.168.0.230). This confirms that the DHCP server is functioning correctly and distributing addresses as intended.
+**To test the DHCP configuration**, I quickly added a Windows 10 Pro virtual machine as a client named PC001. As expected, it does not have a static IP address assigned. When running ipconfig, the client successfully received an IP address of 192.168.0.30, which falls within the DHCP scope configured earlier (192.168.0.30–192.168.0.230). This confirms that the DHCP server is functioning correctly and distributing addresses as intended.
 ![DHCPtest](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c9626a3195a4983eeda052fce054c86bb42c044d/images/DHCPtest.PNG)
 
 *You can also observe that both the DNS server and default gateway/DHCP-related configuration are currently pointing to 192.168.0.2. This is expected at this stage of the lab, as only the primary server (DC01) is active. This configuration will be updated later once redundancy is fully implemented with DC02 and DHCP02, ensuring high availability and failover capabilities across the environment.*
@@ -223,3 +223,80 @@ When checking DNS on DC02, you can see that all the records and zones are alread
 ![DC02testDNS](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/29dd00d0f3c99b9597bc52fe7ac9c50ed614465f/images/DNStestDC02%20(2).PNG)
 
 **DHCP02 (Secondary / Backup DHCP Server)**
+Before setting up DHCP02 as a Backup DHCP Server, ensure the following prerequisites are completed:
+* Rename the server to DHCP02
+* Assign a static IP address of 192.168.0.4
+* Join the server to the domain (int.homelab.local)
+
+To install DHCP: From Server Manager's menu bar, click on Manage > "Add Roles and Features" Next > select a role-based installation, verify that the correct server (DHCP02 – 192.168.0.4) was selected, and then choose the DHCP Server role along with its management tools. After installation, complete the post-deployment configuration, which creates the necessary security groups and authorizes the DHCP server in Active Directory, the same as before. 
+![DHCP02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c14c539e577883270189d5ca5698904d09bdcc80/images/DHCP%202%20(1).PNG)
+
+At this point, the DHCP role is installed and active, but there are no scopes configured, meaning the server is not yet distributing IP addresses. In a typical setup, a new scope would be created. However, in this case, DHCP02 is not intended to act as a standalone DHCP server. Instead, it will function as a failover partner to the primary DHCP server (running on DC01). The scopes will be shared through a DHCP failover configuration, allowing both servers to provide IP address leasing and ensure high availability if one server goes offline.
+
+To configure DHCP redundancy, we set up a failover relationship between DC01 (DHCP1) and DHCP02. From DC01, navigate to your existing DHCP scope (192.168.0.0/24), right-click it, and select Configure Failover. 
+![DHCP02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c14c539e577883270189d5ca5698904d09bdcc80/images/DHCP%202%20(2).PNG)
+
+This launches the failover wizard.
+![DHCP02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c14c539e577883270189d5ca5698904d09bdcc80/images/DHCP%202%20(3).PNG)
+
+Next, specify the partner server. You can either enter the IP address (192.168.0.4), or...
+![DHCP02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c14c539e577883270189d5ca5698904d09bdcc80/images/DHCP%202%20(4).PNG)
+
+...browse and select DHCP02 from the environment. Click on Add server > browse and type DHCP02 and check names. Then hit OK. 
+![DHCP02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c14c539e577883270189d5ca5698904d09bdcc80/images/DHCP%202%20(5).PNG)
+
+![DHCP02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c14c539e577883270189d5ca5698904d09bdcc80/images/DHCP%202%20(6).PNG)
+
+Relationship Name: You can keep the default or rename it for clarity. 
+Mode Selection:
+* Load Balance → Both servers actively respond to DHCP requests
+* Hot Standby → One server is active, the other waits for failover
+
+In this lab, Load Balance is selected, allowing both servers to distribute IP addresses simultaneously, improving performance and availability.
+Load Distribution: Default 50/50 split (both servers share the workload equally). Configure a shared secret for authentication between the two servers.
+![DHCP02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c14c539e577883270189d5ca5698904d09bdcc80/images/DHCP%202%20(7).PNG)
+
+After reviewing the summary, click Finish.
+![DHCP02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c14c539e577883270189d5ca5698904d09bdcc80/images/DHCP%202%20(8).PNG)
+
+The failover relationship is created almost instantly.
+![DHCP02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c14c539e577883270189d5ca5698904d09bdcc80/images/DHCP%202%20(9).PNG)
+
+On DC01, you can confirm the configuration by checking the scope properties
+![DHCP02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c14c539e577883270189d5ca5698904d09bdcc80/images/DHCP%202%20(10).PNG)
+
+Failover tab, where the partner server is listed: dhcp02.int.homelab.local
+![DHCP02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c14c539e577883270189d5ca5698904d09bdcc80/images/DHCP%202%20(11).PNG)
+
+Switch to DHCP02. Initially, there were no scopes configured. Click on Refresh.
+![DHCP02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c14c539e577883270189d5ca5698904d09bdcc80/images/DHCP%202%20(12).png)
+
+After refreshing, the scope is automatically replicated from DC01. You will see the same configuration, including the IP range: 192.168.0.30 – 192.168.0.230
+![DHCP02](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/c14c539e577883270189d5ca5698904d09bdcc80/images/DHCP%202%20(13).PNG)
+
+
+**To validate the DHCP failover setup**, I performed a failover test by simulating a failure of the primary server (DC01). Initially, when checking PC001 with ipconfig, the DHCP server was 192.168.0.2 (DC01), as expected. To test redundancy, I disabled the network adapter on DC01, effectively taking the primary DC and DHCP server offline. This forces the failover partner (DHCP02) to take over DHCP responsibilities.
+![DHCP02test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/d08f0b0533fffd24b1d24ea7e5629d6982afa75d/images/test%20(1).PNG)
+
+
+Next, on PC001, I ran ```ipconfig /release``` to remove the current IP configuration and ran ```ipconfig``` again to see the self-assigned IP.
+![DHCP02test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/d08f0b0533fffd24b1d24ea7e5629d6982afa75d/images/test%20(2).PNG)
+
+
+Then ```ipconfig /renew``` to request a new IP address from a DHCP server
+![DHCP02test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/d08f0b0533fffd24b1d24ea7e5629d6982afa75d/images/test%20(3).PNG)
+
+
+After renewing, the client successfully received a new IP address. To verify which server responded, I ran ```ipconfig /all```. The result showed that the DHCP server was 192.168.0.4, which is DHCP02.
+![DHCP02test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/d08f0b0533fffd24b1d24ea7e5629d6982afa75d/images/test%20(4).PNG)
+
+This confirms that the failover configuration is working correctly. DHCP02 detected that DC01 was offline and DHCP02 successfully took over and continued assigning IP addresses. Even with the primary server unavailable, the network remained fully functional. This demonstrates true high availability and resilience in the DHCP infrastructure.
+
+## Conclusion ##
+This lab demonstrates the end-to-end deployment of a resilient Windows Server infrastructure using Hyper-V. Starting from a fully isolated virtual network, I configured core services including Active Directory, DNS, and DHCP, and then enhanced the environment by implementing redundancy for both domain controllers and DHCP services.
+
+By adding a secondary domain controller (DC02), I ensured that Active Directory and DNS services remain available through replication and fault tolerance. Similarly, configuring DHCP failover with DHCP02 provided continuous IP address allocation even when the primary server (DC01) was taken offline.
+
+Testing the environment by simulating failures confirmed that both Active Directory replication and DHCP failover function as expected, maintaining service availability without disruption.
+
+Overall, this lab highlights the importance of redundancy, high availability, and proper network design in real-world IT environments, while providing hands-on experience with enterprise-level infrastructure concepts.
