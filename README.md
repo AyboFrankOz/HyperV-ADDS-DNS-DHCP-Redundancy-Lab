@@ -287,16 +287,55 @@ Then ```ipconfig /renew``` to request a new IP address from a DHCP server
 ![DHCP02test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/d08f0b0533fffd24b1d24ea7e5629d6982afa75d/images/test%20(3).PNG)
 
 
-After renewing, the client successfully received a new IP address. To verify which server responded, I ran ```ipconfig /all```. The result showed that the DHCP server was 192.168.0.4, which is DHCP02.
+After renewing, the client successfully received a new IP address. To verify which server responded, I ran ```ipconfig /all``` The result showed that the DHCP server was 192.168.0.4, which is DHCP02.
 ![DHCP02test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/d08f0b0533fffd24b1d24ea7e5629d6982afa75d/images/test%20(4).PNG)
 
 This confirms that the failover configuration is working correctly. DHCP02 detected that DC01 was offline and DHCP02 successfully took over and continued assigning IP addresses. Even with the primary server unavailable, the network remained fully functional. This demonstrates true high availability and resilience in the DHCP infrastructure.
+
+Lastly, we will test whether a new user can log in to the domain for the first time while DC01 is offline, with only DC02 and DHCP02 remaining operational.
+
+Before performing this test, we need to ensure proper DNS redundancy is in place. On the DHCP server, we will configure the DNS server options so that clients are not solely dependent on DC01 for name resolution. This ensures that when DC01 is unavailable, clients still know where to query for DNS services.
+
+On DC01, open Server Manager → Tools → DHCP. In the DHCP console, expand the server, then expand IPv4, and then the configured Scope. Click on Scope Options. Based on the current configuration, we can see that the primary DNS server listed is DC01 (192.168.0.2).
+![DHCP-DNS-Config](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/b1f0bd497e8db3a6ac11e2940d13024201113319/images/DHCP%20DNS%20config%20(1).PNG)
+
+Double-click Option 006 – DNS Servers.
+![DHCP-DNS-Config](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/b1f0bd497e8db3a6ac11e2940d13024201113319/images/DHCP%20DNS%20config%20(2).PNG)
+
+To add DC02 as a secondary DNS server, either:
+Enter the IP address 192.168.0.3 and click Add, or
+Enter the hostname DC02, click Resolve, and then Add
+![DHCP-DNS-Config](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/b1f0bd497e8db3a6ac11e2940d13024201113319/images/DHCP%20DNS%20config%20(3).PNG)
+
+Once added, click Apply to save the changes.
+![DHCP-DNS-Config](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/b1f0bd497e8db3a6ac11e2940d13024201113319/images/DHCP%20DNS%20config%20(4).PNG)
+
+After completing this on DC01, repeat the same configuration on DHCP02. This guarantees that clients will always receive both DNS servers (DC01 and DC02) regardless of which DHCP server responds to their request.
+![DHCP-DNS-Config](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/b1f0bd497e8db3a6ac11e2940d13024201113319/images/DHCP%20DNS%20config%20(5).PNG)
+
+I created a test user named “Sam” on DC02.
+![OfflineDC01test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/223ec35dc6d0d54fc0bc1086ba0c4578249e7355/images/testing%20offline%20DC01%20(1).PNG)
+
+After refreshing Active Directory Users and Computers on DC01, I can now also see the Sam account on DC01. As expected, this confirms that both domain controllers are fully synchronized through Active Directory replication, and they function as redundant copies of each other within the environment.
+![OfflineDC01test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/223ec35dc6d0d54fc0bc1086ba0c4578249e7355/images/testing%20offline%20DC01%20(2).PNG)
+
+I powered off DC01, leaving only DC02 and DHCP02 running, and attempted to log in to the domain for the first time using the Sam user account on the Windows 10 Pro client machine.
+![OfflineDC01test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/223ec35dc6d0d54fc0bc1086ba0c4578249e7355/images/testing%20offline%20DC01%20(3).PNG)
+
+The login was successful, confirming that authentication is fully handled by DC02 in the absence of DC01.
+![OfflineDC01test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/223ec35dc6d0d54fc0bc1086ba0c4578249e7355/images/testing%20offline%20DC01%20(4).PNG)
+
+
+Running ```ipconfig /all``` on the client shows the updated network configuration: DHCP Server: 192.168.0.4 (DHCP02); DNS Servers: 192.168.0.2 and 192.168.0.3
+![OfflineDC01test](https://github.com/AyboFrankOz/HyperV-ADDS-DNS-DHCP-Redundancy-Lab/blob/223ec35dc6d0d54fc0bc1086ba0c4578249e7355/images/testing%20offline%20DC01%20(5).PNG)
+
+This confirms that: DHCP failover is working correctly, with DHCP02 serving IP addresses when DC01 is offline. DNS redundancy is in place, allowing clients to resolve domain resources using either domain controller. Active Directory authentication continues to function normally through DC02. Overall, the environment successfully maintains full functionality even with the primary domain controller offline, demonstrating a properly configured, redundant, and highly available infrastructure.
 
 ## Conclusion ##
 This lab demonstrates the end-to-end deployment of a resilient Windows Server infrastructure using Hyper-V. Starting from a fully isolated virtual network, I configured core services including Active Directory, DNS, and DHCP, and then enhanced the environment by implementing redundancy for both domain controllers and DHCP services.
 
 By adding a secondary domain controller (DC02), I ensured that Active Directory and DNS services remain available through replication and fault tolerance. Similarly, configuring DHCP failover with DHCP02 provided continuous IP address allocation even when the primary server (DC01) was taken offline.
 
-Testing the environment by simulating failures confirmed that both Active Directory replication and DHCP failover function as expected, maintaining service availability without disruption.
+Testing the environment by simulating failures confirmed that both Active Directory replication and DHCP failover function as expected, maintaining service availability without disruption. Additionally, a final validation test was performed by powering off DC01 and logging into the domain with a newly created user from a client machine. The successful login, along with DHCP and DNS services being handled by DHCP02 and DC02, further confirmed that the infrastructure continues to operate seamlessly even when the primary domain controller is unavailable.
 
 Overall, this lab highlights the importance of redundancy, high availability, and proper network design in real-world IT environments, while providing hands-on experience with enterprise-level infrastructure concepts.
